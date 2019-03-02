@@ -1,0 +1,57 @@
+package main
+
+//向管道中写入50个数据
+import (
+	"fmt"
+	//"time"
+	"time"
+)
+
+func writeData(intChan chan int){
+	for i:= 0;i<50;i++{
+		//向读写管道中写入数据
+		intChan <- i
+		fmt.Printf("writedata is : %v \n",i)
+	}
+	//写完之后需要关闭管道，这样就可以用for循环读取数据了
+	close(intChan)
+}
+
+//从管道中将50个数据读取出来,读取完成后，需要向退出管道中写入bool值
+func readData(intChan chan int,exitChan chan bool){
+	for{
+		v,ok := <- intChan
+		time.Sleep(1*time.Second)
+		if !ok{
+			break
+		}
+		fmt.Printf("read data is : %v \n",v)
+	}
+
+	//读取完数据后，向退出管道写入true
+	exitChan <- true
+	close(exitChan)
+}
+
+func main(){
+	//1.创建读写管道
+	intChan := make(chan int,10)
+
+	//2.创建退出管道，当50个数据读取完成后，需要向退出管道中写入一个bool值，主线程不断的在这里管道中监听
+	exitChan := make(chan bool,1)
+
+	//3.起两个协程进行读写数据,结果为读写交叉输出
+	go writeData(intChan)
+	go readData(intChan,exitChan)
+
+	//4.如果没有等待,主线程提前退出(不推荐用sleep,因为等多久时间不定)
+	//time.Sleep(10*time.Second)
+
+	//5.主线程阻塞的读取退出管道
+	for{
+		_,ok := <- exitChan
+		if !ok{
+			break
+		}
+	}
+}

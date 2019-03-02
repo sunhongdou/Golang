@@ -1,0 +1,69 @@
+package main
+
+import (
+	"fmt"
+)
+
+func main(){
+	var ch chan int
+	ch = make(chan int,10)
+	exitChan := make(chan struct{},7)
+
+	go send(ch,exitChan)
+	go recv(ch,exitChan)
+
+	var total = 0
+
+	for _ = range exitChan{
+		total++
+		if total == 2{
+			break
+		}
+	}
+	fmt.Println("结束...")
+
+}
+
+//只写的管道
+func send(ch chan<- int,exitChan chan struct{}){
+	for i:=0;i<10;i++{
+		ch <- i
+	}
+	close(ch)
+	var a struct{}
+	exitChan <- a
+}
+
+//只读管道，防止误操作
+func recv(ch <-chan int,exitChan chan struct{}){
+	for{
+		v,ok := <- ch
+		if !ok{
+			break
+		}
+		fmt.Println(v)
+	}
+	var a struct{}
+	exitChan <- a
+}
+
+
+//Channel注意事项
+//1.管道默认情况下是可读可写
+//var chan1 chan int  //可读可写
+
+////2.声明管道为只写
+//var chan2 chan<- int
+//chan2 = make(chan int,3)
+//chan2 <- 20  //可写
+////从chan2中读取数据，报错：invalid operation: <-chan2 (receive from send-only type chan<- int)
+////num := <- chan2  //错误，不可读
+////fmt.Println("chan2 = ",num)
+//
+////3.声明为只读
+//var chan3 <-chan int
+//num2 := <- chan3
+////向chan3中写入数据,报错
+////invalid operation: chan3 <- 30 (send to receive-only type <-chan int)
+//chan3 <- 30  //错误
+//fmt.Println("num2 = ",num2)

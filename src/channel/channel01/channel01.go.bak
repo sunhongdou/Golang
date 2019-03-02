@@ -1,0 +1,80 @@
+package main
+
+import "fmt"
+
+type Cat struct {
+	Name string
+	Age int
+}
+
+func main(){
+	//1.创建一个int类型的channel,这里只能放Int类型的数据！
+	var intChan chan int
+	intChan = make(chan int ,3)
+
+	//2.打印intc打印它的地址
+	//intChan = 0x115980f0,intChan addr = 0x115820d0
+	fmt.Printf("intChan = %v,intChan addr = %p",intChan,&intChan)
+
+	//3.向管道中写入数据,不能超过管道的长度
+	intChan <- 10
+	num := 20
+	intChan <- num
+	intChan <- 30
+	//写入超过管道长度的数据时，会报错：fatal error: all goroutines are asleep - deadlock!
+	// intChan <- 40
+
+	//4.打印channel的长度和容量
+	//channel len = 2,cap =3
+	fmt.Printf("channel len = %v,cap =%v \n",len(intChan),cap(intChan))
+
+	//5.从管道中读取数据,先进先出
+	var res int
+	res = <- intChan
+	fmt.Printf("res = %v\n",res)   //res = 10
+	//取出一个，长度会减一，容量不会变,
+	fmt.Printf("channel len = %v,cap =%v \n",len(intChan),cap(intChan))  //channel len = 2,cap =3
+
+	//6.在没有协程的情况下，如果管道中的数据全部取出，则会报错：deadlock
+	res1 := <- intChan
+	res2 := <- intChan
+	//已取完，但是如果再取值就会报错：fatal error: all goroutines are asleep - deadlock!
+	//res3 := <- intChan
+	//fmt.Printf("res1 = %v,res2 = %v,res3= %v",res1,res2,res3)
+	fmt.Printf("res1 = %v,res2 = %v",res1,res2)   //res1 = 20,res2 = 30
+
+	//创建map类型的channel
+	var mapChan chan map[string]string
+	mapChan = make(chan map[string]string,30)
+
+	m1 := make(map[string]string,20)
+	m1["city1"] = "beijing"
+	m1["city2"] = "wuhan"
+
+	m2 := make(map[string]string,10)
+	m2["hero1"] = "songjiang"
+	m2["hero2"] = "wusong"
+
+	mapChan <- m1
+	mapChan <- m2
+
+	//创建一个可以存放任意类型的channel
+	var allChan chan interface{}
+	allChan =  make(chan interface{},4)
+
+	allChan <- 10
+	allChan <- "jack"
+
+	cat1 := Cat{Name:"tom",Age : 17}
+	cat2 := Cat{Name:"tony",Age : 21}
+	allChan <- cat1
+	allChan <- cat2
+
+	//先将管道中前两个值，扔掉
+	<- allChan
+	<- allChan
+	//取出结构体字段值，先要进行类型断言,否则会报错，因为取出的值是interface
+	catall := <- allChan
+	cat := catall.(Cat)
+	fmt.Printf(cat.Name)  //tom
+}

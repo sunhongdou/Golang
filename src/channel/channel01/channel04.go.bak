@@ -1,0 +1,94 @@
+package main
+
+//向intChan管道中放入要判断的数据
+import (
+	"fmt"
+	"time"
+)
+
+func putNum(intChan chan int){
+	//向管道中放入200个数据
+	for i:=0;i<2000;i++{
+		intChan <- i
+	}
+	//放完以后关闭管道
+	close(intChan)
+}
+
+//从intChan中取出数据，并做素数判断
+func primeNum(intChan chan int,primeChan chan int,exitChan chan bool){
+	var flag bool
+	for {
+		time.Sleep(time.Millisecond*10)
+		num,ok := <-intChan
+		//intChan取不到数据
+		if !ok{
+			break
+		}
+
+		flag = true
+		for i:=2;i<num;i++{
+			if num %i == 0{  //非素数
+				flag =false
+				break
+			}
+		}
+
+		if flag {
+			//将这个素数放入素数管道
+			primeChan <- num
+		}
+	}
+	fmt.Printf("已经有一个协程取不到数据，退出 \n")
+	//已经有一个协程取不到数据，退出。向退出管道报告，我已完成任务
+	exitChan <- true
+}
+
+
+func main() {
+	//将数据存入该管道
+	intChan := make(chan int, 2000)
+	//素数管道，用于存放素数
+	primeChan := make(chan int, 2000)
+	//退出管道
+	exitChan := make(chan bool, 4)
+
+	//测试耗时，可忽略
+	start := time.Now().Unix()
+
+	//1.开启一个协程，向intChan中放入一个1-200个数
+	go putNum(intChan)
+
+	//2.开启四个协程，从intChan中取出数据，并做素数判断，如果是素数，则放入素数管道。执行完后，再想退出管道输入True，证明自己的任务已完成！
+	for i:=0;i<4;i++{
+		go primeNum(intChan,primeChan,exitChan)
+	}
+
+	//3.阻塞主线程
+	go func(){
+		for i:=0;i<4;i++{
+			<- exitChan
+		}
+		//耗时测试，可忽略
+		end := time.Now().Unix()
+
+		fmt.Println("使用协程，耗时=",end - start)
+
+		//当exitChan取出四个结果时，则可以关闭素数管道
+		close(primeChan)
+	}()
+
+	//4.遍历primeChan取出结果
+	for{
+		_,ok := <- primeChan
+		if !ok{
+			break
+		}
+
+		//fmt.Printf("素数为：%d\n",res)
+	}
+
+	//主线程退出
+	fmt.Println("主线程退出...")
+
+}

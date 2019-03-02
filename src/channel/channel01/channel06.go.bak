@@ -1,0 +1,42 @@
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main(){
+	//使用select可以解决从管道取数据的阻塞问题
+
+	//1.定义一个管道   放入10个int型数据
+	intChan := make(chan int,10)
+	for i:=0;i<10;i++{
+		intChan <- i
+	}
+
+	//2.定义一个管道   放入5个string类型的数据
+	strChan := make(chan string,5)
+	for i:=0;i<5;i++{
+		strChan <- "Hello" + fmt.Sprintf("%d",i)
+	}
+
+	//3.传统放方法，如果不关闭管道，在遍历是，会因为阻塞而导致死锁
+
+	//问题：实际开发中，有可能不好确定什么时候关闭管道，就引入了select case匹配
+
+	for {
+		select {
+		//如果intChan一直没关闭，不会一直阻塞而死锁，而是会自动跳转到下一个case匹配
+		case v := <- intChan:
+			fmt.Printf("read data from intChan,data is :%d\n", v)
+			time.Sleep(time.Second)
+		case v := <- strChan:
+			fmt.Printf("read data from strChan,data is %s\n",v)
+			time.Sleep(time.Second)
+		default:
+			fmt.Printf("can not find the data...\n")
+			time.Sleep(time.Second)
+			return
+		}
+	}
+}

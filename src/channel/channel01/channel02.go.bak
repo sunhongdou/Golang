@@ -1,0 +1,41 @@
+package main
+
+import "fmt"
+
+func main(){
+	//1.创建一个channel
+	intChan := make(chan int,3)
+
+	//2.向channel中写入数据
+	intChan <- 10
+	intChan <- 20
+
+	//3.此时关闭信道,则不能继续往里面写入数据了,但是可以正常读取数据
+	close(intChan)
+	//写入数据：panic
+	//intChan <- 30   //panic: send on closed channel
+
+	//读取数据
+	res := <- intChan
+	fmt.Printf("res is : %v\n\n",res)   //res is : 10
+
+	//4.遍历管道中的数据
+
+	intChan2 := make(chan int ,100)
+	for i:=0;i<100;i++{
+		intChan2 <- i*2  //放入100个数据到管道中
+	}
+
+	//错误：遍历管道时，不能使用普通的for循环，这样遍历只会输出50个数据
+	//for i:=0;i<len(intChan2);i++{
+	//	fmt.Println(<-intChan2)  //0 2 4 ...98  (共计50个数据)
+	//}
+
+	//正确做法：遍历channel只能用for range进行遍历
+	//在遍历是，必须要将管道关闭，如果没有关闭会出现deadlock。fatal error: all goroutines are asleep - deadlock!
+	// 因为管道里取完之后，还在等待从空管道中取值
+	close(intChan2)  //关闭管道则可以正确的输出
+	for v := range intChan2{
+		fmt.Printf("v = %v",v)
+	}
+}
